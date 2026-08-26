@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use App\Services\TermiiSmsService;
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('login');
 });
 
 Route::resource('livestock', LivestockController::class); 
