@@ -34,7 +34,8 @@ RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
+# Expose Apache port
 EXPOSE 80
 
-CMD
-["sh", "-c", "php artisan migrate --force && apache2-foreground"]
+# Run Laravel migrations before starting Apache
+CMD ["sh", "-c", "php artisan migrate --force && apache2-foreground"]
