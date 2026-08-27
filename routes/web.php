@@ -8,6 +8,27 @@ use App\Http\Controllers\ReviewController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use App\Services\TermiiSmsService;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+
+Route::get('/create-admin', function () {
+
+    $admin = User::updateOrCreate(
+        ['email' => 'admin@stockconnect.com'],
+        [
+            'name' => 'Stock Connect Admin',
+            'password' => Hash::make('Admin@12345'),
+            'role' => 'admin',
+        ]
+    );
+
+    return response()->json([
+        'message' => 'Admin account created successfully',
+        'email' => $admin->email,
+        'role' => $admin->role,
+    ]);
+});
+
 
 Route::get('/', function () {
     return redirect()->route('login');
