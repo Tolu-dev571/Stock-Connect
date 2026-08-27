@@ -30,20 +30,23 @@ use App\Services\TermiiSmsService;
 
 Route::get('/create-admin', function () {
 
-    $admin = User::updateOrCreate(
-        ['email' => 'admin@stockconnect.com'],
-        [
-            'name' => 'Stock Connect Admin',
-            'password' => Hash::make('Admin@12345'),
-            'role' => 'admin',
-        ]
-    );
+    $admin = User::where('email', 'admin@stockconnect.com')->first();
 
-    return response()->json([
-        'message' => 'Admin account created successfully',
-        'email' => $admin->email,
-        'role' => $admin->role,
-    ]);
+    if (!$admin) {
+        $admin = User::create([
+            'name' => 'Stock Connect Admin',
+            'email' => 'tolu@stockconnect.com',
+            'password' => Hash::make('tolu@12345'),
+            'role' => 'admin',
+        ]);
+    } else {
+        $admin->update([
+            'role' => 'admin',
+            'password' => Hash::make('Admin@12345'),
+        ]);
+    }
+
+    return 'Admin created successfully. Email: admin@stockconnect.com';
 });
 
 
