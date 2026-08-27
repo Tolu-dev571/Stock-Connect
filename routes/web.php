@@ -1,15 +1,32 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+
+use App\Models\User;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\LivestockController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ReviewController;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\Request;
 use App\Services\TermiiSmsService;
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
+
+
+/*
+|--------------------------------------------------------------------------
+| TEMPORARY ADMIN CREATION
+|--------------------------------------------------------------------------
+| Use this ONCE to create the admin account in the Render PostgreSQL
+| database.
+|
+| URL:
+| https://stock-connect.onrender.com/create-admin
+|
+| IMPORTANT:
+| Remove this route after successfully creating the admin account.
+|--------------------------------------------------------------------------
+*/
 
 Route::get('/create-admin', function () {
 
@@ -30,15 +47,42 @@ Route::get('/create-admin', function () {
 });
 
 
+/*
+|--------------------------------------------------------------------------
+| HOME
+|--------------------------------------------------------------------------
+*/
+
 Route::get('/', function () {
     return redirect()->route('login');
 });
 
-Route::resource('livestock', LivestockController::class); 
+
+/*
+|--------------------------------------------------------------------------
+| LIVESTOCK
+|--------------------------------------------------------------------------
+*/
+
+Route::resource('livestock', LivestockController::class);
+
+
+/*
+|--------------------------------------------------------------------------
+| CUSTOMER LIVESTOCK MARKETPLACE
+|--------------------------------------------------------------------------
+*/
 
 Route::get('/shop/livestock', [LivestockController::class, 'shop'])
     ->middleware('auth')
     ->name('customer.livestock');
+
+
+/*
+|--------------------------------------------------------------------------
+| ORDERS
+|--------------------------------------------------------------------------
+*/
 
 Route::get('/livestock/{livestock}/order', [OrderController::class, 'create'])
     ->middleware('auth')
@@ -55,7 +99,22 @@ Route::get('/orders/{order}', [OrderController::class, 'show'])
 Route::get('/orders/{order}/payment', [OrderController::class, 'payment'])
     ->middleware('auth')
     ->name('orders.payment');
-     
+
+Route::post('/orders/{order}/payment/confirm', [OrderController::class, 'confirmPayment'])
+    ->middleware('auth')
+    ->name('orders.payment.confirm');
+
+Route::get('/my-orders', [OrderController::class, 'myOrders'])
+    ->middleware('auth')
+    ->name('orders.my');
+
+
+/*
+|--------------------------------------------------------------------------
+| CUSTOMER HOME
+|--------------------------------------------------------------------------
+*/
+
 Route::get('/home', function () {
 
     if (auth()->user()->role === 'admin') {
@@ -70,42 +129,67 @@ Route::get('/home', function () {
 
     return view('customer.home', compact('livestocks'));
 
-})->middleware('auth')->name('home'); 
+})->middleware('auth')->name('home');
 
-Route::get('/my-orders', [OrderController::class, 'myOrders'])
-    ->middleware('auth')
-    ->name('orders.my'); 
-    
-Route::post('/orders/{order}/payment/confirm', [OrderController::class, 'confirmPayment'])
-    ->middleware('auth')
-    ->name('orders.payment.confirm');   
-    
+
+/*
+|--------------------------------------------------------------------------
+| ADMIN DASHBOARD
+|--------------------------------------------------------------------------
+*/
+
 Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])
     ->middleware('auth')
-    ->name('admin.dashboard'); 
+    ->name('admin.dashboard');
+
+
+/*
+|--------------------------------------------------------------------------
+| ADMIN LIVESTOCK
+|--------------------------------------------------------------------------
+|
+| The resource routes above already provide the CRUD functionality:
+|
+| GET       /livestock
+| GET       /livestock/create
+| POST      /livestock
+| GET       /livestock/{livestock}
+| GET       /livestock/{livestock}/edit
+| PUT/PATCH /livestock/{livestock}
+| DELETE    /livestock/{livestock}
+|
+|--------------------------------------------------------------------------
+*/
+
+
+/*
+|--------------------------------------------------------------------------
+| ADMIN ORDERS
+|--------------------------------------------------------------------------
+*/
 
 Route::get('/admin/orders', [OrderController::class, 'adminIndex'])
     ->middleware('auth')
-    ->name('admin.orders.index'); 
+    ->name('admin.orders.index');
 
 Route::get('/admin/orders/{order}', [OrderController::class, 'adminShow'])
     ->middleware('auth')
-    ->name('admin.orders.show');  
-   
+    ->name('admin.orders.show');
+
 Route::patch('/admin/orders/{order}/status', [OrderController::class, 'updateStatus'])
     ->middleware('auth')
-    ->name('admin.orders.status');    
-Route::get('/admin/customers', [AdminController::class, 'customers'])
-    ->middleware('auth')
-    ->name('admin.customers.index');
+    ->name('admin.orders.status');
 
-Route::get('/admin/customers/{user}', [AdminController::class, 'customerShow'])
+
+/*
+|--------------------------------------------------------------------------
+| ADMIN PAYMENTS
+|--------------------------------------------------------------------------
+*/
+
+Route::get('/admin/payments', [OrderController::class, 'adminPayments'])
     ->middleware('auth')
-    ->name('admin.customers.show');
-    
-Route::get('/admin/customers', [AdminController::class, 'customers'])
-    ->middleware('auth')
-    ->name('admin.customers.index');    
+    ->name('admin.payments.index');
 
 Route::patch('/admin/orders/{order}/payment/confirm', [OrderController::class, 'confirmAdminPayment'])
     ->middleware('auth')
@@ -113,22 +197,23 @@ Route::patch('/admin/orders/{order}/payment/confirm', [OrderController::class, '
 
 Route::patch('/admin/orders/{order}/payment/reject', [OrderController::class, 'rejectAdminPayment'])
     ->middleware('auth')
-    ->name('admin.orders.payment.reject');    
+    ->name('admin.orders.payment.reject');
 
-Route::post('/logout', function (Request $request) {
 
-    Auth::logout();
+/*
+|--------------------------------------------------------------------------
+| ADMIN CUSTOMERS
+|--------------------------------------------------------------------------
+*/
 
-    $request->session()->invalidate();
-    $request->session()->regenerateToken();
-
-    return redirect()->route('login');
-
-})->middleware('auth')->name('logout');   
-
-Route::get('/admin/payments', [OrderController::class, 'adminPayments'])
+Route::get('/admin/customers', [AdminController::class, 'customers'])
     ->middleware('auth')
-    ->name('admin.payments.index');
+    ->name('admin.customers.index');
+
+Route::get('/admin/customers/{user}', [AdminController::class, 'customerShow'])
+    ->middleware('auth')
+    ->name('admin.customers.show');
+
 
 /*
 |--------------------------------------------------------------------------
@@ -163,6 +248,35 @@ Route::patch('/admin/reviews/{review}/hide', [ReviewController::class, 'hide'])
     ->middleware('auth')
     ->name('admin.reviews.hide');
 
+
+/*
+|--------------------------------------------------------------------------
+| LOGOUT
+|--------------------------------------------------------------------------
+*/
+
+Route::post('/logout', function (Request $request) {
+
+    Auth::logout();
+
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+
+    return redirect()->route('login');
+
+})->middleware('auth')->name('logout');
+
+
+/*
+|--------------------------------------------------------------------------
+| TEST SMS
+|--------------------------------------------------------------------------
+|
+| Temporary Termii SMS test route.
+|
+|--------------------------------------------------------------------------
+*/
+
 Route::get('/test-sms', function (TermiiSmsService $sms) {
 
     $sms->send(
@@ -171,4 +285,4 @@ Route::get('/test-sms', function (TermiiSmsService $sms) {
     );
 
     return 'SMS sent successfully!';
-});    
+});
